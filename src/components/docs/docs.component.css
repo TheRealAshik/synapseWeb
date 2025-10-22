@@ -1,0 +1,20 @@
+/* Using a separate CSS file for prose styles to keep component TS clean */
+:host ::ng-deep .prose h1 {
+  @apply text-4xl font-extrabold tracking-tight lg:text-5xl mb-4 text-foreground;
+}
+
+:host ::ng-deep .prose h2 {
+  @apply text-3xl font-bold tracking-tight mt-8 mb-4 border-b border-border pb-2 text-foreground;
+}
+
+:host ::ng-deep .prose p {
+  @apply leading-7 text-muted-foreground;
+}
+
+:host ::ng-deep .prose a {
+  @apply text-primary underline-offset-4 hover:underline;
+}
+
+:host ::ng-deep .prose code {
+    @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold text-foreground;
+}

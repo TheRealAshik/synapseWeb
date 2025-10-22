@@ -40,7 +40,15 @@
         }
       }
     </div>
-    <p class="mt-1 whitespace-pre-wrap text-foreground">{{ post().content }}</p>
+    <p class="mt-1 whitespace-pre-wrap text-foreground">
+      @for(part of parsedContent(); track $index) {
+        @if(part.type === 'text') {
+          <span>{{ part.value }}</span>
+        } @else {
+          <a href="#" (click)="$event.preventDefault()" class="text-primary hover:underline">{{ part.value }}</a>
+        }
+      }
+    </p>
 
     <div class="flex items-center justify-between mt-4 text-muted-foreground max-w-xs">
       <!-- Comments -->

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, WritableSignal, signal, inject, ChangeDetectorRef, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, WritableSignal, signal, inject, ChangeDetectorRef, Signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Post } from '../../types/database.types';
 import { SupabaseService } from '../../services/supabase.service';
@@ -23,6 +23,34 @@ export class PostCardComponent {
   isMenuOpen = signal(false);
   showDeleteConfirm = signal(false);
   isDeleting = signal(false);
+
+  parsedContent = computed(() => {
+    const post = this.post();
+    if (!post) return [];
+
+    const content = post.content;
+    const regex = /@(\w+)/g;
+    const parts: { type: 'text' | 'mention'; value: string; username?: string }[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(content)) !== null) {
+      // Add text before the mention
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', value: content.substring(lastIndex, match.index) });
+      }
+      // Add the mention
+      parts.push({ type: 'mention', value: match[0], username: match[1] });
+      lastIndex = regex.lastIndex;
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({ type: 'text', value: content.substring(lastIndex) });
+    }
+    
+    return parts;
+  });
 
   constructor() {
     this.currentUser = this.supabaseService.currentUser;

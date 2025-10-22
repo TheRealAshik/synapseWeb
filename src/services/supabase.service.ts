@@ -105,13 +105,16 @@ export class SupabaseService {
     return this.supabase.auth.signOut();
   }
 
-  async getPosts(): Promise<Post[]> {
+  async getPosts(page: number = 0, limit: number = 10): Promise<Post[]> {
+    const from = page * limit;
+    const to = from + limit - 1;
+
     // Step 1: Fetch raw posts
     const { data: rawPosts, error: postsError } = await this.supabase
       .from('posts')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50);
+      .range(from, to);
 
     if (postsError) {
       console.error('Error fetching posts:', postsError);
@@ -183,14 +186,122 @@ export class SupabaseService {
     }));
   }
 
-  async createPost(content: string) {
+  async getPostsForUser(userId: string, page: number = 0, limit: number = 10): Promise<Post[]> {
+    const from = page * limit;
+    const to = from + limit - 1;
+
+    // Step 1: Fetch raw posts for the user
+    const { data: rawPosts, error: postsError } = await this.supabase
+      .from('posts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (postsError) {
+      console.error(`Error fetching posts for user ${userId}:`, postsError);
+      return [];
+    }
+    if (!rawPosts || rawPosts.length === 0) {
+      return [];
+    }
+    
+    // Step 2: Fetch the user's profile (author of all these posts)
+    const { data: user, error: userError } = await this.supabase
+      .from('users')
+      .select('id, uid, username, display_name, avatar, bio')
+      .eq('uid', userId)
+      .single();
+
+    if (userError) {
+      console.error('Error fetching user for posts:', userError);
+      return [];
+    }
+
+    const userProfile = user as UserProfile;
+
+    // Step 3: Combine posts with their user profiles
+    let posts: Post[] = rawPosts.map((p) => ({
+      ...p,
+      users: userProfile,
+    }));
+
+    // Step 4: Fetch likes for the current user
+    const currentUser = this.currentUser();
+    if (!currentUser) {
+      return posts; // Return posts without like status if no user is logged in
+    }
+
+    const postIds = posts.map((p) => p.id);
+
+    const { data: likes } = await this.supabase
+      .from('likes')
+      .select('target_id')
+      .eq('user_id', currentUser.id)
+      .in('target_id', postIds)
+      .eq('target_type', 'post');
+
+    const likedPostIds = new Set(likes?.map((l) => l.target_id) || []);
+
+    // Step 5: Augment posts with like status.
+    // is_following is implicitly false for own posts.
+    return posts.map((post) => ({
+      ...post,
+      is_liked: likedPostIds.has(post.id),
+      users: {
+        ...post.users,
+        is_following: false,
+      },
+    }));
+  }
+
+  async createPost(content: string, mentionedUserIds: string[] = []) {
     const user = this.currentUser();
     if (!user) throw new Error('User not authenticated');
     
-    return this.supabase.from('posts').insert({
+    const { data: postData, error } = await this.supabase.from('posts').insert({
       user_id: user.id,
       content: content,
-    });
+      mentions: mentionedUserIds.length > 0 ? mentionedUserIds : null,
+    }).select('id').single();
+
+    if (error) {
+      console.error('Error creating post:', error);
+      return { error };
+    }
+
+    if (mentionedUserIds.length > 0 && postData) {
+      await this.createMentionNotifications(postData.id, mentionedUserIds);
+    }
+    
+    return { error: null };
+  }
+
+  private async createMentionNotifications(postId: string, mentionedUserIds: string[]) {
+    const user = this.currentUser();
+    if (!user) return;
+    
+    const { data: authorProfile } = await this.supabase
+      .from('users')
+      .select('display_name')
+      .eq('uid', user.id)
+      .single();
+
+    const authorDisplayName = authorProfile?.display_name || 'Someone';
+
+    const notifications = mentionedUserIds.map(mentionedUid => ({
+      user_id: mentionedUid,
+      sender_id: user.id,
+      type: 'mention',
+      message: `${authorDisplayName} mentioned you in a post.`,
+      data: { postId },
+      action_url: `/post/${postId}`
+    }));
+
+    const { error } = await this.supabase.from('notifications').insert(notifications);
+    if (error) {
+      console.error('Error creating mention notifications:', error);
+    }
   }
 
   async deletePost(postId: string) {
@@ -268,5 +379,22 @@ export class SupabaseService {
       throw error;
     }
     return data as UserProfile;
+  }
+
+  async searchUsers(query: string): Promise<UserProfile[]> {
+    if (!query || query.length < 1) {
+      return [];
+    }
+    const { data, error } = await this.supabase
+      .from('users')
+      .select('uid, username, display_name, avatar')
+      .ilike('username', `${query}%`)
+      .limit(5);
+
+    if (error) {
+      console.error('Error searching users:', error);
+      return [];
+    }
+    return data as UserProfile[];
   }
 }

@@ -11,12 +11,38 @@
         } @else {
            <div class="w-12 h-12 rounded-full bg-secondary animate-pulse"></div>
         }
-        <div class="flex-1">
+        <div class="flex-1 relative">
           <textarea
+            #postTextarea
             [(ngModel)]="newPostContent"
+            (input)="onContentChange($event)"
+            (keydown.escape)="showMentionSuggestions.set(false)"
             rows="3"
             class="w-full p-2 text-lg bg-transparent resize-none focus:outline-none placeholder-muted-foreground"
             placeholder="What's happening?"></textarea>
+          
+          @if (showMentionSuggestions()) {
+            <div class="absolute top-full left-0 w-full max-h-60 overflow-y-auto bg-card border border-border rounded-md shadow-lg z-10 mt-1">
+              @if (mentionLoading()) {
+                <div class="p-3 text-center text-sm text-muted-foreground">Searching...</div>
+              } @else {
+                @if (mentionSuggestions().length > 0) {
+                  @for (user of mentionSuggestions(); track user.uid) {
+                    <button (click)="selectMention(user, postTextarea)" class="w-full text-left flex items-center p-3 hover:bg-secondary transition-colors">
+                      <img [src]="user.avatar" class="w-8 h-8 rounded-full mr-3">
+                      <div>
+                        <p class="font-bold text-sm text-foreground">{{ user.display_name }}</p>
+                        <p class="text-xs text-muted-foreground">@{{ user.username }}</p>
+                      </div>
+                    </button>
+                  }
+                } @else {
+                  <div class="p-3 text-center text-sm text-muted-foreground">No users found for "@{{mentionQuery()}}"</div>
+                }
+              }
+            </div>
+          }
+          
           <div class="flex justify-end pt-2">
             <button
               (click)="createPost()"
@@ -32,7 +58,7 @@
     <!-- Feed -->
     @if (loading()) {
       <div class="flex justify-center items-center p-8">
-        <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 T24">
+        <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
@@ -43,6 +69,15 @@
       }
     }
     
+    @if (loadingMore()) {
+      <div class="flex justify-center items-center p-4">
+        <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    }
+
     @if (!loading() && posts().length === 0) {
       <div class="text-center p-8 text-muted-foreground">
         <p class="text-lg">The feed is empty.</p>

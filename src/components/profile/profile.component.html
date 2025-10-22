@@ -4,34 +4,61 @@
     <app-header></app-header>
     
     @if (profile(); as userProfile) {
-      <div class="p-4">
-        <!-- Profile Display View -->
-        @if (!isEditing()) {
-          <div>
-            <div class="h-48 bg-secondary rounded-t-lg relative">
-              <!-- Cover Photo Placeholder -->
+      @if (!isEditing()) {
+        <div>
+          <div class="h-48 bg-secondary relative">
+            <!-- Cover Photo Placeholder -->
+          </div>
+          <div class="p-4">
+            <div class="flex justify-between items-start -mt-20">
+              <img class="w-32 h-32 rounded-full border-4 border-background bg-background object-cover" [src]="userProfile.avatar" alt="User Avatar">
+              <button (click)="startEditing()" class="mt-20 px-4 py-2 text-sm font-bold border border-border rounded-full hover:bg-secondary transition-colors">Edit Profile</button>
             </div>
-            <div class="p-4 bg-card rounded-b-lg">
-              <div class="flex justify-between items-start -mt-16">
-                <img class="w-28 h-28 rounded-full border-4 border-card bg-background" [src]="userProfile.avatar" alt="User Avatar">
-                <button (click)="startEditing()" class="px-4 py-2 text-sm font-bold border border-border rounded-full hover:bg-secondary transition-colors">Edit Profile</button>
-              </div>
-              <div class="mt-4">
-                <h2 class="text-2xl font-bold">{{ userProfile.display_name }}</h2>
-                <p class="text-muted-foreground">@{{ userProfile.username }}</p>
-                <p class="mt-2 whitespace-pre-wrap">{{ userProfile.bio || 'No bio yet.' }}</p>
-              </div>
-              <div class="flex space-x-4 mt-4 text-sm text-muted-foreground">
-                <span><span class="font-bold text-foreground">{{ userProfile.following_count }}</span> Following</span>
-                <span><span class="font-bold text-foreground">{{ userProfile.followers_count }}</span> Followers</span>
-              </div>
+            <div class="mt-4">
+              <h2 class="text-2xl font-bold">{{ userProfile.display_name }}</h2>
+              <p class="text-muted-foreground">@{{ userProfile.username }}</p>
+              <p class="mt-2 whitespace-pre-wrap">{{ userProfile.bio || 'No bio yet.' }}</p>
             </div>
-             <div class="mt-4 text-center text-muted-foreground">
-                <p>Posts will appear here.</p>
+            <div class="flex space-x-4 mt-4 text-sm text-muted-foreground">
+              <span><span class="font-bold text-foreground">{{ userProfile.following_count }}</span> Following</span>
+              <span><span class="font-bold text-foreground">{{ userProfile.followers_count }}</span> Followers</span>
             </div>
           </div>
-        } @else {
-          <!-- Profile Edit View -->
+          
+          <!-- User's Posts Feed -->
+          <div class="border-t border-border">
+            @if (loadingPosts()) {
+              <div class="flex justify-center items-center p-8">
+                <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            } @else {
+              @if (userPosts().length > 0) {
+                 @for (post of userPosts(); track post.id) {
+                    <app-post-card [post]="post"></app-post-card>
+                 }
+              } @else {
+                 <div class="text-center p-8 text-muted-foreground">
+                    <p class="text-lg">You haven't posted anything yet.</p>
+                 </div>
+              }
+            }
+            
+            @if (loadingMorePosts()) {
+              <div class="flex justify-center items-center p-4">
+                <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <!-- Profile Edit View -->
+        <div class="p-4">
           <div class="p-4 bg-card rounded-lg">
             <h2 class="text-2xl font-bold mb-4">Edit Profile</h2>
             <form (submit)="$event.preventDefault(); saveProfile()">
@@ -40,7 +67,7 @@
                 <div>
                   <label class="block text-sm font-medium text-muted-foreground">Avatar</label>
                   <div class="mt-2 flex items-center space-x-4">
-                    <img class="w-20 h-20 rounded-full bg-secondary" [src]="avatarPreviewUrl() || userProfile.avatar" alt="Avatar Preview">
+                    <img class="w-20 h-20 rounded-full bg-secondary object-cover" [src]="avatarPreviewUrl() || userProfile.avatar" alt="Avatar Preview">
                     <label for="avatar-upload" class="cursor-pointer px-4 py-2 text-sm font-bold border border-border rounded-full hover:bg-secondary transition-colors">
                       Change
                       <input id="avatar-upload" name="avatar" type="file" class="sr-only" (change)="onFileSelected($event)" accept="image/png, image/jpeg">
@@ -87,11 +114,11 @@
               </div>
             </form>
           </div>
-        }
-      </div>
+        </div>
+      }
     } @else {
        <div class="flex justify-center items-center p-8">
-        <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 T24">
+        <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>

@@ -13,6 +13,9 @@ import { RealtimeChannel } from '@supabase/supabase-js';
   imports: [CommonModule, FormsModule, PostCardComponent, HeaderComponent],
   templateUrl: './home.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(window:scroll)': 'onScroll()'
+  }
 })
 export class HomeComponent implements OnDestroy {
   supabaseService = inject(SupabaseService);
@@ -22,11 +25,23 @@ export class HomeComponent implements OnDestroy {
   posts: WritableSignal<Post[]> = signal([]);
   newPostContent = signal('');
   loading = signal(true);
+  loadingMore = signal(false);
+  currentPage = signal(0);
+  allPostsLoaded = signal(false);
+  private readonly POSTS_PER_PAGE = 10;
+
+  // State for mentions
+  showMentionSuggestions = signal(false);
+  mentionSuggestions = signal<UserProfile[]>([]);
+  mentionLoading = signal(false);
+  mentionQuery = signal('');
+  confirmedMentions = new Map<string, UserProfile>();
+
   private realtimeChannel: RealtimeChannel | null = null;
   private reloadDebounceTimer: any = null;
 
   constructor() {
-    this.loadPosts();
+    this.loadPosts(true);
     // Eagerly load profile service to start fetching data
     this.profileService.currentUserProfile();
     
@@ -47,24 +62,129 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  async loadPosts() {
-    this.loading.set(true);
-    const posts = await this.supabaseService.getPosts();
+  onScroll() {
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    // Load more when user is 300px from the bottom
+    if (documentHeight - scrollPosition < 300) {
+      this.loadMorePosts();
+    }
+  }
+
+  async loadPosts(isInitialLoad = false) {
+    if (isInitialLoad) {
+      this.loading.set(true);
+    }
+    this.currentPage.set(0);
+    this.allPostsLoaded.set(false);
+    
+    const posts = await this.supabaseService.getPosts(0, this.POSTS_PER_PAGE);
     this.posts.set(posts);
-    this.loading.set(false);
+    
+    if (posts.length < this.POSTS_PER_PAGE) {
+      this.allPostsLoaded.set(true);
+    }
+    
+    if (isInitialLoad) {
+      this.loading.set(false);
+    }
     this.cdr.markForCheck();
   }
+
+  async loadMorePosts() {
+    if (this.loadingMore() || this.allPostsLoaded() || this.loading()) return;
+
+    this.loadingMore.set(true);
+    const nextPage = this.currentPage() + 1;
+
+    const newPosts = await this.supabaseService.getPosts(nextPage, this.POSTS_PER_PAGE);
+
+    if (newPosts.length < this.POSTS_PER_PAGE) {
+      this.allPostsLoaded.set(true);
+    }
+
+    this.posts.update(existingPosts => [...existingPosts, ...newPosts]);
+    this.currentPage.set(nextPage);
+    this.loadingMore.set(false);
+    this.cdr.markForCheck();
+  }
+
 
   async createPost() {
     const content = this.newPostContent().trim();
     if (!content) return;
+
+    // Find all mentions in the final content to ensure they weren't deleted
+    const mentionRegex = /@(\w+)/g;
+    const matches = content.match(mentionRegex) || [];
+    const finalUsernames = new Set(matches.map(m => m.substring(1)));
     
-    const { error } = await this.supabaseService.createPost(content);
+    const mentionedUserIds = Array.from(this.confirmedMentions.values())
+      .filter(user => finalUsernames.has(user.username))
+      .map(user => user.uid);
+    
+    const { error } = await this.supabaseService.createPost(content, mentionedUserIds);
     if (error) {
       console.error('Error creating post:', error);
     } else {
       this.newPostContent.set('');
+      this.confirmedMentions.clear();
+      this.showMentionSuggestions.set(false);
     }
+  }
+
+  onContentChange(event: Event) {
+    const textarea = event.target as HTMLTextAreaElement;
+    const text = textarea.value;
+    const cursorPos = textarea.selectionStart;
+
+    const textToCursor = text.substring(0, cursorPos);
+    const match = textToCursor.match(/@(\w+)$/);
+
+    if (match) {
+      const query = match[1];
+      this.mentionQuery.set(query);
+      this.showMentionSuggestions.set(true);
+      this.fetchUserSuggestions(query);
+    } else {
+      this.showMentionSuggestions.set(false);
+    }
+  }
+
+  async fetchUserSuggestions(query: string) {
+    this.mentionLoading.set(true);
+    const users = await this.supabaseService.searchUsers(query);
+    this.mentionSuggestions.set(users);
+    this.mentionLoading.set(false);
+  }
+
+  selectMention(user: UserProfile, textarea: HTMLTextAreaElement) {
+    const currentContent = this.newPostContent();
+    const cursorPos = textarea.selectionStart;
+    const textBeforeCursor = currentContent.substring(0, cursorPos);
+    
+    const mentionQuery = this.mentionQuery();
+    const startIndex = textBeforeCursor.lastIndexOf(`@${mentionQuery}`);
+
+    const newContent = 
+      currentContent.substring(0, startIndex) + 
+      `@${user.username} ` + 
+      currentContent.substring(cursorPos);
+    
+    this.newPostContent.set(newContent);
+    this.confirmedMentions.set(user.username, user);
+    
+    this.showMentionSuggestions.set(false);
+    this.mentionSuggestions.set([]);
+    this.mentionQuery.set('');
+
+    // Set cursor position after the inserted mention
+    setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = startIndex + `@${user.username} `.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   }
 
   private debouncedLoadPosts() {
