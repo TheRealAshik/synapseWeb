@@ -106,7 +106,7 @@ export class PostCardComponent {
     const { error } = await this.supabaseService.toggleLike(currentPost);
 
     if (error) {
-      console.error('Error toggling like:', error);
+      console.error('Error toggling like:', (error as any).message ?? error);
       currentPost.is_liked = !optimisticLiked;
       currentPost.likes_count = currentPost.is_liked ? optimisticLikesCount + 1 : optimisticLikesCount - 1;
       this.cdr.markForCheck();

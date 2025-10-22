@@ -67,6 +67,9 @@
       @for (post of posts(); track post.id; let i = $index) {
         <app-post-card [post]="post"></app-post-card>
       }
+      @if (!allPostsLoaded()) {
+        <div #loadMoreTrigger class="h-1"></div>
+      }
     }
     
     @if (loadingMore()) {

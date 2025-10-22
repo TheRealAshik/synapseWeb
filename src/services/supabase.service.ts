@@ -321,10 +321,13 @@ export class SupabaseService {
           target_type: 'post' as const
       };
       
+      // The `post` object is optimistically updated by the component.
+      // If `is_liked` is true, the user just liked it, so we INSERT.
       if (post.is_liked) {
-          return this.supabase.from('likes').delete().match(like);
-      } else {
           return this.supabase.from('likes').insert(like);
+      } else {
+          // If `is_liked` is false, the user just unliked it, so we DELETE.
+          return this.supabase.from('likes').delete().match(like);
       }
   }
 
@@ -348,7 +351,7 @@ export class SupabaseService {
     const filePath = `${user.id}/avatar.${fileExt}`;
 
     const { error } = await this.supabase.storage
-      .from('avatars')
+      .from('media')
       .upload(filePath, file, { upsert: true });
 
     if (error) {
@@ -357,7 +360,7 @@ export class SupabaseService {
     }
     
     const { data } = this.supabase.storage
-      .from('avatars')
+      .from('media')
       .getPublicUrl(filePath);
 
     return `${data.publicUrl}?t=${new Date().getTime()}`;
@@ -393,6 +396,22 @@ export class SupabaseService {
 
     if (error) {
       console.error('Error searching users:', error);
+      return [];
+    }
+    return data as UserProfile[];
+  }
+
+  async getUserProfiles(uids: string[]): Promise<UserProfile[]> {
+    if (!uids || uids.length === 0) {
+      return [];
+    }
+    const { data, error } = await this.supabase
+      .from('users')
+      .select('uid, username, display_name, avatar')
+      .in('uid', uids);
+
+    if (error) {
+      console.error('Error fetching user profiles:', error);
       return [];
     }
     return data as UserProfile[];

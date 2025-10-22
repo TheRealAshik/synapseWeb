@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, WritableSignal, ChangeDetectorRef, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, WritableSignal, ChangeDetectorRef, OnDestroy, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -13,11 +13,8 @@ import { RealtimeChannel } from '@supabase/supabase-js';
   imports: [CommonModule, FormsModule, PostCardComponent, HeaderComponent],
   templateUrl: './home.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(window:scroll)': 'onScroll()'
-  }
 })
-export class HomeComponent implements OnDestroy {
+export class HomeComponent implements OnDestroy, AfterViewInit {
   supabaseService = inject(SupabaseService);
   profileService = inject(ProfileService); // Inject ProfileService
   private cdr = inject(ChangeDetectorRef);
@@ -40,6 +37,9 @@ export class HomeComponent implements OnDestroy {
   private realtimeChannel: RealtimeChannel | null = null;
   private reloadDebounceTimer: any = null;
 
+  @ViewChild('loadMoreTrigger') loadMoreTrigger: ElementRef | undefined;
+  private observer: IntersectionObserver | undefined;
+
   constructor() {
     this.loadPosts(true);
     // Eagerly load profile service to start fetching data
@@ -55,21 +55,37 @@ export class HomeComponent implements OnDestroy {
     });
   }
 
+  ngAfterViewInit(): void {
+    this.setupIntersectionObserver();
+  }
+
   ngOnDestroy() {
     this.cleanupRealtimeListeners();
     if (this.reloadDebounceTimer) {
       clearTimeout(this.reloadDebounceTimer);
     }
+    this.observer?.disconnect();
   }
 
-  onScroll() {
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const documentHeight = document.documentElement.scrollHeight;
-    
-    // Load more when user is 300px from the bottom
-    if (documentHeight - scrollPosition < 300) {
-      this.loadMorePosts();
-    }
+  private setupIntersectionObserver() {
+    // We use a timeout to ensure the trigger element is in the DOM after a render.
+    setTimeout(() => {
+      if (this.loadMoreTrigger?.nativeElement) {
+        const options = {
+          root: null, // relative to viewport
+          rootMargin: '0px',
+          threshold: 0.1
+        };
+
+        this.observer = new IntersectionObserver(([entry]) => {
+          if (entry.isIntersecting) {
+            this.loadMorePosts();
+          }
+        }, options);
+
+        this.observer.observe(this.loadMoreTrigger.nativeElement);
+      }
+    }, 0);
   }
 
   async loadPosts(isInitialLoad = false) {
@@ -78,6 +94,7 @@ export class HomeComponent implements OnDestroy {
     }
     this.currentPage.set(0);
     this.allPostsLoaded.set(false);
+    this.observer?.disconnect();
     
     const posts = await this.supabaseService.getPosts(0, this.POSTS_PER_PAGE);
     this.posts.set(posts);
@@ -90,12 +107,17 @@ export class HomeComponent implements OnDestroy {
       this.loading.set(false);
     }
     this.cdr.markForCheck();
+
+    if (!this.allPostsLoaded()) {
+      this.setupIntersectionObserver();
+    }
   }
 
   async loadMorePosts() {
     if (this.loadingMore() || this.allPostsLoaded() || this.loading()) return;
 
     this.loadingMore.set(true);
+    this.observer?.disconnect();
     const nextPage = this.currentPage() + 1;
 
     const newPosts = await this.supabaseService.getPosts(nextPage, this.POSTS_PER_PAGE);
@@ -108,6 +130,10 @@ export class HomeComponent implements OnDestroy {
     this.currentPage.set(nextPage);
     this.loadingMore.set(false);
     this.cdr.markForCheck();
+    
+    if (!this.allPostsLoaded()) {
+      this.setupIntersectionObserver();
+    }
   }
 
 

@@ -8,10 +8,11 @@ import { AuthComponent } from './components/auth/auth.component';
 import { HomeComponent } from './components/home/home.component';
 import { ProfileComponent } from './components/profile/profile.component';
 import { CompleteProfileComponent } from './components/complete-profile/complete-profile.component';
+import { ChatComponent } from './components/chat/chat.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, AuthComponent, HomeComponent, ProfileComponent, CompleteProfileComponent],
+  imports: [CommonModule, AuthComponent, HomeComponent, ProfileComponent, CompleteProfileComponent, ChatComponent],
   templateUrl: './app.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -20,7 +21,7 @@ export class AppComponent {
   private navigationService = inject(NavigationService);
   
   currentUser: Signal<User | null>;
-  activeView: Signal<'home' | 'profile'>;
+  activeView: Signal<'home' | 'profile' | 'chat'>;
   profileNeedsCompletion: Signal<boolean>;
 
   constructor() {

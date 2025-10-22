@@ -35,6 +35,11 @@ export class HeaderComponent {
     this.isDropdownOpen.set(false);
     this.navigationService.navigateTo('profile');
   }
+
+  navigateToChat() {
+    this.isDropdownOpen.set(false);
+    this.navigationService.navigateTo('chat');
+  }
   
   navigateToHome() {
     this.navigationService.navigateTo('home');

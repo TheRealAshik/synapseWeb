@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-export type View = 'home' | 'profile';
+export type View = 'home' | 'profile' | 'chat';
 
 @Injectable({
   providedIn: 'root',
