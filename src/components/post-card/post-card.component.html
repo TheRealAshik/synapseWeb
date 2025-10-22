@@ -1,0 +1,95 @@
+@if (post()) {
+<article class="flex p-4 space-x-4 border-b border-border hover:bg-secondary/30 transition-colors duration-200" (click)="closeMenu()">
+  <div class="flex-shrink-0">
+    <img class="w-12 h-12 rounded-full" [src]="post().users.avatar" [alt]="post().users.username + ' avatar'">
+  </div>
+  <div class="flex-1">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-2 text-sm">
+        <span class="font-bold text-foreground">{{ post().users.display_name }}</span>
+        <span class="text-muted-foreground">@{{ post().users.username }}</span>
+        <span class="text-muted-foreground">·</span>
+        <span class="text-muted-foreground">{{ timeAgo(post().created_at) }}</span>
+      </div>
+      
+      @if (currentUser()) {
+        @if (post().users.uid === currentUser()?.id) {
+          <!-- Kebab menu for post owner -->
+          <div class="relative">
+            <button (click)="toggleMenu($event)" class="text-muted-foreground hover:text-foreground focus:outline-none p-1 -mr-1 rounded-full">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+            </button>
+            @if (isMenuOpen()) {
+              <div (click)="$event.stopPropagation()" class="absolute right-0 mt-2 w-40 bg-card border border-border rounded-md shadow-lg py-1 z-20">
+                <button (click)="openDeleteConfirm($event)" class="w-full text-left flex items-center px-4 py-2 text-sm text-destructive hover:bg-destructive/10">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  <span>Delete</span>
+                </button>
+              </div>
+            }
+          </div>
+        } @else {
+          <!-- Follow button for other users' posts -->
+          <button (click)="handleFollow()" [disabled]="isFollowing()"
+            class="px-3 py-1 text-sm font-semibold rounded-full transition-colors"
+            [class]="post().users.is_following 
+              ? 'text-foreground bg-transparent border border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive'
+              : 'text-background bg-foreground hover:bg-foreground/90'">
+            {{ post().users.is_following ? 'Following' : 'Follow' }}
+          </button>
+        }
+      }
+    </div>
+    <p class="mt-1 whitespace-pre-wrap text-foreground">{{ post().content }}</p>
+
+    <div class="flex items-center justify-between mt-4 text-muted-foreground max-w-xs">
+      <!-- Comments -->
+      <div class="flex items-center space-x-2 cursor-pointer hover:text-blue-500">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"></path></svg>
+        <span>{{ post().comments_count }}</span>
+      </div>
+      <!-- Reposts (placeholder) -->
+      <div class="flex items-center space-x-2 cursor-pointer hover:text-green-500">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 20h5v-5M20 4h-5v5"></path></svg>
+        <span>0</span>
+      </div>
+      <!-- Likes -->
+      <button (click)="handleLike()" [disabled]="isLiking()"
+        class="flex items-center space-x-2 focus:outline-none"
+        [class]="post().is_liked ? 'text-pink-500' : 'hover:text-pink-500'">
+        <svg class="w-5 h-5" [class]="post().is_liked ? 'fill-current' : 'fill-none'" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+        <span>{{ post().likes_count }}</span>
+      </button>
+      <!-- Share (placeholder) -->
+      <div class="flex items-center space-x-2 cursor-pointer hover:text-blue-500">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12v8c0 1.1.9 2 2 2h12a2 2 0 002-2v-8m-4-6l-4-4m0 0L8 8m4-4v12"></path></svg>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteConfirm()) {
+  <div class="fixed inset-0 bg-black/60 z-40 flex items-center justify-center" (click)="cancelDelete()">
+    <div class="bg-card rounded-lg shadow-xl p-6 w-full max-w-sm m-4" (click)="$event.stopPropagation()">
+      <h3 class="text-lg font-bold text-foreground">Delete Post?</h3>
+      <p class="mt-2 text-sm text-muted-foreground">This can’t be undone and it will be removed from your profile and the timeline of any accounts that follow you.</p>
+      <div class="mt-6 flex justify-end space-x-3">
+        <button (click)="cancelDelete()" class="px-4 py-2 text-sm font-semibold rounded-md border border-border hover:bg-secondary">
+          Cancel
+        </button>
+        <button (click)="confirmDelete()" [disabled]="isDeleting()" class="px-4 py-2 text-sm font-semibold rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 flex items-center justify-center w-20">
+          @if(isDeleting()) {
+            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          } @else {
+            <span>Delete</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+}

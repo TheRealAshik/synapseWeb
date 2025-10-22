@@ -1,0 +1,18 @@
+<main class="min-h-screen">
+  @if (currentUser()) {
+    @if (profileNeedsCompletion()) {
+      <app-complete-profile />
+    } @else {
+      @switch (activeView()) {
+        @case ('home') {
+          <app-home />
+        }
+        @case ('profile') {
+          <app-profile />
+        }
+      }
+    }
+  } @else {
+    <app-auth />
+  }
+</main>

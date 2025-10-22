@@ -1,0 +1,5 @@
+{
+  "name": "Synapse Social",
+  "description": "A modern social media application built with Angular and Supabase, featuring real-time feeds, posts, likes, and user authentication.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,70 @@
+<div class="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+  <div class="w-full max-w-lg p-8 space-y-6 bg-card rounded-lg shadow-md">
+    <div class="text-center">
+      <h2 class="text-3xl font-extrabold text-foreground">Complete Your Profile</h2>
+      <p class="mt-2 text-muted-foreground">Welcome to Synapse Social! Let's get your profile set up.</p>
+    </div>
+
+    @if(profile(); as userProfile) {
+    <form (submit)="$event.preventDefault(); saveProfile()" class="space-y-6">
+      <!-- Avatar -->
+      <div>
+        <label class="block text-sm font-medium text-muted-foreground">Avatar</label>
+        <div class="mt-2 flex items-center space-x-4">
+          <img class="w-20 h-20 rounded-full bg-secondary object-cover" [src]="avatarPreviewUrl() || userProfile.avatar" alt="Avatar Preview">
+          <label for="avatar-upload" class="cursor-pointer px-4 py-2 text-sm font-bold border border-border rounded-full hover:bg-secondary transition-colors">
+            Change
+            <input id="avatar-upload" name="avatar" type="file" class="sr-only" (change)="onFileSelected($event)" accept="image/png, image/jpeg">
+          </label>
+        </div>
+      </div>
+
+      <!-- Display Name -->
+      <div>
+        <label for="displayName" class="block text-sm font-medium text-muted-foreground">Display Name</label>
+        <input type="text" id="displayName" [(ngModel)]="displayName" name="displayName" required class="mt-1 block w-full bg-input border border-border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-ring focus:border-ring sm:text-sm">
+      </div>
+      
+      <!-- Username -->
+      <div>
+        <label for="username" class="block text-sm font-medium text-muted-foreground">Username</label>
+        <input type="text" id="username" [(ngModel)]="username" name="username" required class="mt-1 block w-full bg-input border border-border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-ring focus:border-ring sm:text-sm">
+      </div>
+
+      <!-- Bio -->
+      <div>
+        <label for="bio" class="block text-sm font-medium text-muted-foreground">Bio</label>
+        <textarea id="bio" name="bio" rows="3" [(ngModel)]="bio" class="mt-1 block w-full bg-input border border-border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-ring focus:border-ring sm:text-sm resize-none" placeholder="Tell us a little about yourself..."></textarea>
+      </div>
+
+      @if (errorMessage()) {
+        <p class="mt-4 text-sm text-red-500">{{ errorMessage() }}</p>
+      }
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-between pt-4">
+        <button type="button" (click)="signOut()" class="px-5 py-2 text-sm font-bold border border-border rounded-full hover:bg-secondary transition-colors">
+            Sign Out
+        </button>
+        <button type="submit" [disabled]="loading()" class="px-5 py-2 text-sm font-bold text-primary-foreground bg-primary rounded-full hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+          @if (loading()) {
+            <svg class="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          } @else {
+            Save and Continue
+          }
+        </button>
+      </div>
+    </form>
+    } @else {
+        <div class="flex justify-center items-center p-8">
+            <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 T24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+    }
+  </div>
+</div>
